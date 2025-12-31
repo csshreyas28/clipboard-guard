@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Clipboard Guard</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <span class="icon">🔐</span>
+      <div>
+        <h1>Clipboard Guard</h1>
+        <p>Protect sensitive data</p>
+      </div>
+    </header>
+
+    <section>
+      <label>Add redaction rule</label>
+      <input id="ruleInput" placeholder="Name, phrase, ID…" />
+      <button id="addRule">Add Rule</button>
+    </section>
+
+    <section class="rules">
+      <h2>Active Rules</h2>
+      <ul id="ruleList"></ul>
+    </section>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+/* Overlay */
+.guard-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999999;
+}
+
+/* Dialog */
+.guard-dialog {
+  width: 480px;
+  max-width: 92%;
+  background: #0f172a; /* slate-900 */
+  color: #e5e7eb;      /* gray-200 */
+  border-radius: 12px;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.8);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont;
+  overflow: hidden;
+}
+
+/* Header */
+.guard-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #1e293b; /* slate-800 */
+  color: #fbbf24;      /* amber-400 */
+  padding: 14px 18px;
+  font-size: 16px;
+  font-weight: 600;
+  border-bottom: 1px solid #334155;
+}
+
+.guard-header .icon {
+  font-size: 18px;
+}
+
+/* Body */
+.guard-body {
+  padding: 16px 18px;
+}
+
+.guard-subtext {
+  font-size: 13px;
+  color: #cbd5f5;
+  margin-bottom: 8px;
+}
+
+.guard-list {
+  margin: 6px 0 14px;
+  padding-left: 18px;
+  font-size: 13px;
+}
+
+.guard-list li {
+  margin-bottom: 4px;
+}
+
+/* Label */
+.guard-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: #e5e7eb;
+}
+
+/* Textarea */
+.guard-dialog textarea {
+  width: 100%;
+  height: 120px;
+  background: #020617; /* slate-950 */
+  color: #e5e7eb;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 13px;
+  resize: vertical;
+  outline: none;
+}
+
+.guard-dialog textarea:focus {
+  border-color: #38bdf8; /* sky-400 */
+}
+
+/* Actions */
+.guard-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 18px;
+  border-top: 1px solid #334155;
+}
+
+/* Buttons */
+.guard-actions button {
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  border: none;
+}
+
+/* Safe */
+.btn-safe {
+  background: #22c55e; /* green-500 */
+  color: #052e16;
+}
+
+/* Warn */
+.btn-warn {
+  background: #f59e0b; /* amber-500 */
+  color: #422006;
+}
+
+/* Cancel */
+.btn-cancel {
+  background: #334155; /* slate-700 */
+  color: #e5e7eb;
+}
+
+.btn-cancel:hover {
+  background: #475569;
+}

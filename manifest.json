@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Clipboard Sensitive Guard",
+  "version": "1.3",
+  "description": "Warns and redacts sensitive info before pasting into AI chat tools",
+  "permissions": ["storage"],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chat.openai.com/*",
+        "https://chatgpt.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://poe.com/*",
+        "https://www.perplexity.ai/*"
+      ],
+      "js": ["content.js"],
+      "css": ["styles.css"]
+    }
+  ]
+}
