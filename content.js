@@ -65,7 +65,7 @@ document.addEventListener(
   },
   true
 );
-
+ 
 /***********************
  * DETECTION
  ***********************/
