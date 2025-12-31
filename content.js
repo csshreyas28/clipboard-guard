@@ -31,22 +31,33 @@ document.addEventListener(
     if (!activeInput) return;
 
     const isPaste =
-      (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "v";
+      (event.ctrlKey || event.metaKey) &&
+      event.key.toLowerCase() === "v";
 
     if (!isPaste) return;
 
-    event.preventDefault();
-    event.stopPropagation();
+    // Read clipboard metadata first
+    const clipboardItems = await navigator.clipboard.read();
+
+    const hasImage = clipboardItems.some(item =>
+      item.types.some(type => type.startsWith("image/"))
+    );
+
+    // 🖼️ Let images/files paste normally
+    if (hasImage) return;
 
     const clipboardText = await navigator.clipboard.readText();
+    if (!clipboardText) return;
 
     chrome.storage.sync.get({ rules: [] }, (data) => {
       const findings = detectSensitive(clipboardText, data.rules);
 
-      if (findings.length === 0) {
-        insertText(clipboardText);
-        return;
-      }
+      // ✅ No sensitive content → allow normal paste
+      if (findings.length === 0) return;
+
+      // ❌ Sensitive → block paste & show dialog
+      event.preventDefault();
+      event.stopPropagation();
 
       const redacted = redactText(clipboardText, data.rules);
       showDialog(findings, clipboardText, redacted);
