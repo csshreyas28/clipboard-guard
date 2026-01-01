@@ -1,185 +1,166 @@
-/***********************
- * REGEX PATTERNS
- ***********************/
-const emailRegex = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i;
-const apiKeyRegex = /sk_(live|test)_[0-9a-zA-Z]{16,}/;
-const jwtRegex = /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/;
-const ipRegex = /\b\d{1,3}(\.\d{1,3}){3}\b/;
-const sshKeyRegex = /-----BEGIN (RSA|OPENSSH) PRIVATE KEY-----/;
+class ClipboardGuard {
+  constructor() {
+    this.activeElement = null;
+    this.customRules = [];
+    this.init();
+  }
 
-let activeInput = null;
+  async init() {
+    await this.loadRules();
+    this.trackFocus();
+    this.listenToPaste();
+  }
 
-/***********************
- * TRACK ACTIVE INPUT
- ***********************/
-document.addEventListener(
-  "focusin",
-  (e) => {
-    if (e.target.tagName === "TEXTAREA" || e.target.isContentEditable) {
-      activeInput = e.target;
-    }
-  },
-  true
-);
+  async loadRules() {
+    const data = await chrome.storage.sync.get({ rules: [] });
+    this.customRules = data.rules || [];
+  }
 
-/***********************
- * INTERCEPT CTRL+V / CMD+V
- ***********************/
-document.addEventListener(
-  "keydown",
-  async (event) => {
-    if (!activeInput) return;
-
-    const isPaste =
-      (event.ctrlKey || event.metaKey) &&
-      event.key.toLowerCase() === "v";
-
-    if (!isPaste) return;
-
-    // Read clipboard metadata first
-    const clipboardItems = await navigator.clipboard.read();
-
-    const hasImage = clipboardItems.some(item =>
-      item.types.some(type => type.startsWith("image/"))
-    );
-
-    // 🖼️ Let images/files paste normally
-    if (hasImage) return;
-
-    const clipboardText = await navigator.clipboard.readText();
-    if (!clipboardText) return;
-
-    chrome.storage.sync.get({ rules: [] }, (data) => {
-      const findings = detectSensitive(clipboardText, data.rules);
-
-      // ✅ No sensitive content → allow normal paste
-      if (findings.length === 0) return;
-
-      // ❌ Sensitive → block paste & show dialog
-      event.preventDefault();
-      event.stopPropagation();
-
-      const redacted = redactText(clipboardText, data.rules);
-      showDialog(findings, clipboardText, redacted);
-    });
-  },
-  true
-);
- 
-/***********************
- * DETECTION
- ***********************/
-function detectSensitive(text, rules) {
-  const found = [];
-
-  if (rules.some(r => new RegExp(`\\b${escapeRegex(r)}\\b`, "i").test(text)))
-    found.push("Custom Rule");
-
-  if (emailRegex.test(text)) found.push("Email Address");
-  if (apiKeyRegex.test(text)) found.push("API Key");
-  if (jwtRegex.test(text)) found.push("JWT Token");
-  if (ipRegex.test(text)) found.push("IP Address");
-  if (sshKeyRegex.test(text)) found.push("SSH Private Key");
-
-  return [...new Set(found)];
-}
-
-/***********************
- * REDACTION
- ***********************/
-function redactText(text, rules) {
-  let output = text;
-
-  rules.forEach(rule => {
-    const regex = new RegExp(`\\b${escapeRegex(rule)}\\b`, "gi");
-    output = output.replace(regex, "[REDACTED]");
-  });
-
-  return output
-    .replace(emailRegex, "[REDACTED_EMAIL]")
-    .replace(apiKeyRegex, "[REDACTED_API_KEY]")
-    .replace(jwtRegex, "[REDACTED_JWT]")
-    .replace(ipRegex, "[REDACTED_IP]")
-    .replace(sshKeyRegex, "[REDACTED_SSH_KEY]");
-}
-
-function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-/***********************
- * DIALOG UI (CENTERED)
- ***********************/
-function showDialog(findings, original, redacted) {
-  removeDialog();
-
-  const overlay = document.createElement("div");
-  overlay.className = "guard-overlay";
-
-  overlay.innerHTML = `
-  <div class="guard-dialog">
-    <div class="guard-header">
-      <span class="icon">⚠️</span>
-      <span>Sensitive Information Detected</span>
-    </div>
-
-    <div class="guard-body">
-      <p class="guard-subtext">
-        The following sensitive data was found in your clipboard:
-      </p>
-
-      <ul class="guard-list">
-        ${findings.map(f => `<li>${f}</li>`).join("")}
-      </ul>
-
-      <label class="guard-label">Redaction Preview (editable)</label>
-      <textarea id="guard-preview">${redacted}</textarea>
-    </div>
-
-    <div class="guard-actions">
-      <button class="btn-safe" id="paste-redacted">Paste Redacted</button>
-      <button class="btn-warn" id="paste-anyway">Paste Anyway</button>
-      <button class="btn-cancel" id="cancel">Cancel</button>
-    </div>
-  </div>
-`;
-
-
-  document.body.appendChild(overlay);
-
-  document.getElementById("paste-redacted").onclick = () => {
-    insertText(document.getElementById("guard-preview").value);
-    removeDialog();
-  };
-
-  document.getElementById("paste-anyway").onclick = () => {
-    insertText(original);
-    removeDialog();
-  };
-
-  document.getElementById("cancel").onclick = removeDialog;
-}
-
-function removeDialog() {
-  document.querySelector(".guard-overlay")?.remove();
-}
-
-/***********************
- * INSERT TEXT
- ***********************/
-function insertText(text) {
-  if (!activeInput) return;
-
-  activeInput.focus();
-
-  if (activeInput.isContentEditable) {
-    document.execCommand("insertText", false, text);
-  } else {
-    activeInput.setRangeText(
-      text,
-      activeInput.selectionStart,
-      activeInput.selectionEnd,
-      "end"
+  trackFocus() {
+    document.addEventListener(
+      "focusin",
+      (e) => {
+        if (
+          e.target.isContentEditable ||
+          e.target.tagName === "TEXTAREA" ||
+          e.target.tagName === "INPUT"
+        ) {
+          this.activeElement = e.target;
+        }
+      },
+      true
     );
   }
+
+  listenToPaste() {
+    document.addEventListener(
+      "paste",
+      (event) => this.handlePaste(event),
+      true
+    );
+  }
+
+  handlePaste(event) {
+    if (!this.activeElement) return;
+
+    const clipboardData = event.clipboardData || window.clipboardData;
+    if (!clipboardData) return;
+
+    const text = clipboardData.getData("text");
+
+    // Images / files → allow browser default
+    if (!text || text.trim() === "") return;
+
+    const findings = this.detect(text);
+    if (findings.length === 0) return;
+
+    // Block paste BEFORE insertion
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    const redacted = this.redact(text);
+    this.showDialog(findings, text, redacted);
+  }
+
+  detect(text) {
+    const hits = [];
+
+    this.customRules.forEach((rule) => {
+      const regex = new RegExp(`\\b${this.escape(rule)}\\b`, "i");
+      if (regex.test(text)) hits.push("Custom Rule");
+    });
+
+    if (/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i.test(text))
+      hits.push("Email");
+
+    if (/sk_(live|test)_[0-9a-zA-Z]{16,}/.test(text))
+      hits.push("API Key");
+
+    if (/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/.test(text))
+      hits.push("JWT");
+
+    if (/\b\d{1,3}(\.\d{1,3}){3}\b/.test(text))
+      hits.push("IP Address");
+
+    if (/-----BEGIN .* PRIVATE KEY-----/.test(text))
+      hits.push("Private Key");
+
+    return [...new Set(hits)];
+  }
+
+  redact(text) {
+    let output = text;
+
+    this.customRules.forEach((rule) => {
+      output = output.replace(
+        new RegExp(`\\b${this.escape(rule)}\\b`, "gi"),
+        "[REDACTED]"
+      );
+    });
+
+    return output
+      .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, "[REDACTED_EMAIL]")
+      .replace(/sk_(live|test)_[0-9a-zA-Z]{16,}/g, "[REDACTED_API_KEY]")
+      .replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "[REDACTED]")
+      .replace(/\b\d{1,3}(\.\d{1,3}){3}\b/g, "[REDACTED_IP]")
+      .replace(/-----BEGIN .* PRIVATE KEY-----[\s\S]*?-----END .* PRIVATE KEY-----/g, "[REDACTED]");
+  }
+
+  showDialog(findings, original, redacted) {
+    document.querySelector(".guard-overlay")?.remove();
+
+    const overlay = document.createElement("div");
+    overlay.className = "guard-overlay";
+
+    overlay.innerHTML = `
+      <div class="guard-dialog">
+        <div class="guard-header">⚠ Sensitive Information Detected</div>
+        <ul class="guard-list">${findings.map(f => `<li>${f}</li>`).join("")}</ul>
+        <label>Redaction Preview</label>
+        <textarea id="guard-preview">${redacted}</textarea>
+        <div class="guard-actions">
+          <button class="btn-safe" id="paste-redacted">Paste Redacted</button>
+          <button class="btn-warn" id="paste-anyway">Paste Anyway</button>
+          <button class="btn-cancel" id="cancel">Cancel</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    document.getElementById("paste-redacted").onclick = () => {
+      this.insert(document.getElementById("guard-preview").value);
+      overlay.remove();
+    };
+
+    document.getElementById("paste-anyway").onclick = () => {
+      this.insert(original);
+      overlay.remove();
+    };
+
+    document.getElementById("cancel").onclick = () => overlay.remove();
+  }
+
+  insert(text) {
+    const el = this.activeElement;
+    if (!el) return;
+
+    el.focus();
+
+    if (el.isContentEditable) {
+      document.execCommand("insertText", false, text);
+    } else {
+      const start = el.selectionStart;
+      const end = el.selectionEnd;
+      el.value = el.value.slice(0, start) + text + el.value.slice(end);
+      el.selectionStart = el.selectionEnd = start + text.length;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  }
+
+  escape(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
 }
+
+new ClipboardGuard();
